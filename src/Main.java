@@ -5,19 +5,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
-        ServerSocket server = new ServerSocket(1234);
-        List<String> messageStorage = new ArrayList<>();
+    private ServerSocket server;
+    List<String> messageStorage = new ArrayList<>();
+    List<Client> clients = new ArrayList<>();
+
+    public Main() throws IOException {
+        server = new ServerSocket(1234);
+    }
+
+    public void runServer() throws IOException{
         while(true) {
             System.out.println("Waiting...");
             // ждем клиента из сети
             Socket socket = server.accept();
             System.out.println("Client connected!");
             // создаем клиента на своей стороне
-            Client client = new Client(socket,messageStorage);
-            // запускаем поток
-            Thread thread = new Thread(client);
-            thread.start();
+            clients.add(new Client(socket,messageStorage,this));
         }
+    }
+
+    public void refreshAll(){
+        for (Client client : clients) {
+            client.refresh();
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        new Main().runServer();
     }
 }

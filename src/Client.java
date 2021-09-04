@@ -1,7 +1,4 @@
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.net.Socket;
 import java.util.List;
 import java.util.Scanner;
@@ -10,14 +7,31 @@ class Client implements Runnable {
     Socket socket;
     List<String> messageStorage;
     String userName;
+    Main main;
+    int messageCount;
+    PrintStream out;
 
-    public Client(Socket socket, List<String> messageStorage) {
+    public Client(Socket socket, List<String> messageStorage, Main main) {
         this.socket = socket;
         this.messageStorage = messageStorage;
+        this.messageCount = 0;
+        this.main = main;
+
+        Thread thread = new Thread(this);
+        thread.start();
+    }
+
+    public void refresh() {
+        if (messageCount != messageStorage.size()) {
+            for (int i = messageCount; i < messageStorage.size(); i++) {
+                out.println(messageStorage.get(i));
+                System.out.println(messageStorage.get(i));
+            }
+            messageCount = messageStorage.size();
+        }
     }
 
     public void run() {
-        int messageCount = messageStorage.size();
         try {
             // получаем потоки ввода и вывода
             InputStream is = socket.getInputStream();
@@ -25,35 +39,24 @@ class Client implements Runnable {
 
             // создаем удобные средства ввода и вывода
             Scanner in = new Scanner(is);
-            PrintStream out = new PrintStream(os);
+            out = new PrintStream(os);
 
             out.print("Enter your name:> ");
             String uInput = in.nextLine();
-//            while (uInput.length()==0) {
-                userName =uInput;
-//                uInput = in.nextLine();
-//            }
+            userName = uInput;
 
             // читаем из сети и пишем в сеть
-            out.println("Welcome to our chat @"+userName+"!");
-            messageStorage.add("Welcome to our chat @"+userName+"!");
-            messageCount++;
-            String input = in.nextLine();
+            messageStorage.add("Welcome to our chat @" + userName + "!");
+            main.refreshAll();
+            String input = "";
             String fInput = "";
-            MessageViewer messageViewer = new MessageViewer(messageStorage,out);
-            messageViewer.start();
-            while (!input.equals("bye")) {
-                fInput = "@"+userName+":> "+input;
-//                out.println(fInput);
-                messageStorage.add(fInput);
-//                messageCount++;
-//                if(messageCount!=messageStorage.size()){
-//                    for (int i = messageCount-1; i < messageStorage.size(); i++) {
-//                        out.println(messageStorage.get(i));
-//                    }
-//                }
+            do {
                 input = in.nextLine();
-            }
+                fInput = "@" + userName + ":> " + input;
+                messageStorage.add(fInput);
+                messageCount++;
+                main.refreshAll();
+            } while (!input.equals("bye"));
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
